@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title></title>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
+      crossorigin="anonymous"
+    />
+
+    <style>
+      body {
+        font-family: "Fira Code", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Faker/3.1.0/locales/pt_BR/faker.pt_BR.min.js"></script>
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/7.21.0/firebase-app.js"></script>
+
+    <!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
+    <script src="https://www.gstatic.com/firebasejs/7.21.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.21.0/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.21.0/firebase-analytics.js"></script>
+
+    <script src="../secret.js"></script>
+    <script type="module">
+
+      const secret = import('../secret.js')
+
+        
+
+
+      // Your web app's Firebase configuration
+      // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+
+      // substituir por configs reais no arquivo secret.js
+      var firebaseConfig = {
+        apiKey: secret.apiKey,
+        authDomain: secret.authDomain,
+        databaseURL: secret.databaseURL,
+        projectId: secret.projectId,
+        storageBucket: secret.storageBucket,
+        messagingSenderId: secret.messagingSenderId,
+        appId: secret.appId,
+        measurementId: secret.measurementId
+      };
+
+
+      // Initialize Firebase
+      firebase.initializeApp(firebaseConfig);
+      firebase.analytics();
+    </script>
+  </head>
+  <body>
+    <!-- Template HTML -->
+
+    <h1>Firebase testing 🔥</h1>
+
+    <div id="userDetails"></div>
+
+    <section id="whenSignedOut">
+      <button id="signInBtn" class="btn btn-info">
+        Sign in with google
+      </button>
+    </section>
+
+    <section id="whenSignedIn">
+      <button id="signOutBtn" class="btn btn-info">
+        Sign Out
+      </button>
+    </section>
+
+    <button id="createThing" class="btn btn-success">Create Thing!</button>
+
+    <ul id="thingsList"></ul>
+
+
+    </section>
+
+    <script>
+      const auth = firebase.auth();
+
+      console.log(firebase);
+      console.log(auth);
+
+      const whenSignedIn = document.getElementById("whenSignedIn");
+      const whenSignedOut = document.getElementById("whenSignedOut");
+
+      const signInBtn = document.getElementById("signInBtn");
+      const signOutBtn = document.getElementById("signOutBtn");
+
+      const userDetails = document.getElementById("userDetails");
+
+      const provider = new firebase.auth.GoogleAuthProvider();
+
+      signInBtn.onclick = () => auth.signInWithPopup(provider);
+      signOutBtn.onclick = () => auth.signOut();
+
+      auth.onAuthStateChanged((user) => {
+        console.log(user);
+
+        if (user) {
+          whenSignedIn.hidden = false;
+          whenSignedOut.hidden = true;
+          userDetails.innerHTML = `
+          <h3>Welcome ${user.displayName}!</h3>
+          <br><p>User ID: ${user.uid}</p><br>
+          <p>creationTime: <strong>${user.metadata.creationTime}</strong></p>
+          <p>lastSignInTime: <strong>${user.metadata.lastSignInTime}</strong></p>
+          `;
+        } else {
+          whenSignedIn.hidden = true;
+          whenSignedOut.hidden = false;
+          userDetails.innerHTML = "";
+        }
+
+        const db = firebase.firestore();
+
+        const createThing = document.getElementById("createThing");
+        const thingsList = document.getElementById("thingsList");
+
+        let thingsRef;
+        let unsubscribe;
+
+        auth.onAuthStateChanged((user) => {
+          if (user) {
+            thingsRef = db.collection("things");
+
+            createThing.onclick = () => {
+              const { serverTimestamp } = firebase.firestore.FieldValue;
+
+              thingsRef.add({
+                uid: user.uid,
+                name: faker.commerce.productName(),
+                createdAt: serverTimestamp(),
+              });
+            };
+
+            unsubscribe = thingsRef
+            .where('uid', '==', user.uid)
+            .orderBy('createdAt')
+            .onSnapshot(querySnapshot => {
+
+              const items = querySnapshot.docs.map(doc => {
+                
+                return  `<li>${ doc.data().name }</li>`
+
+              })
+              
+              thingsList.innerHTML = items.join('')
+            })
+            } else {
+              unsubscribe && unsubscribe();
+              thingsList.innerHTML = ''
+
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
+
+<!-- .toLocaleDateString('pt-br') -->
